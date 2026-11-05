@@ -1,0 +1,227 @@
+:root{
+  --bg:#0e1016; --panel:#161a22; --ink:#e8eef4; --muted:#9aa6b4;
+  --accent:#f1c40f; --open:#27ae60; --closed:#c0392b; --line:#2a2f3a;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%; height:100dvh; margin:0;}
+body{
+  background:#000; color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"DejaVu Sans",sans-serif;
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+  user-select:none; -webkit-user-select:none;
+}
+
+/* ---------- Игровая рамка (портрет) ----------
+   Привязана к пропорции фон-карты пролива (1080×1920 = 9:16): высота = высоте
+   окна, ширина считается от неё, но не шире окна. На телефоне в портрете рамка
+   занимает весь экран; в широком/десктопном/ландшафтном окне игра остаётся
+   портретной колонкой по центру (по бокам — чёрные поля), графика не расплывается. */
+#app{
+  position:relative;
+  width:100%; height:100%;
+  max-width:min(100vw, calc(100dvh * 1080 / 1920));
+  margin:0 auto;
+  background:var(--bg);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+
+/* ---------- Header ---------- */
+#header{
+  display:flex; align-items:center; gap:10px;
+  padding: calc(var(--safe-top) + 8px) calc(var(--safe-right) + 12px) 8px
+           calc(var(--safe-left) + 12px);
+  background:linear-gradient(#161a22,#12141a);
+  border-bottom:1px solid var(--line);
+  min-height:52px;
+}
+.hdr-flag{
+  width:34px; height:26px; border-radius:3px; object-fit:cover;
+  box-shadow:0 0 0 1px #000a; flex:0 0 auto; background:#222;
+}
+.hdr-text{flex:1 1 auto; font-size:14px; line-height:1.25; color:var(--ink);}
+.btn-icon{
+  flex:0 0 auto; width:40px; height:40px; padding:6px;
+  background:none; border:none; cursor:pointer; border-radius:8px;
+}
+.btn-icon:active{background:#ffffff14;}
+.btn-icon img{width:100%; height:100%; display:block;}
+
+/* ---------- Stage / map ---------- */
+#stage{position:relative; flex:1 1 auto; min-height:0; overflow:hidden;}
+#map{position:absolute; inset:0; width:100%; height:100%; display:block;}
+.conn{
+  position:absolute; left:50%; top:46px; transform:translateX(-50%);
+  font-size:12px; padding:4px 10px; border-radius:999px; background:#000a;
+  color:var(--muted); pointer-events:none; transition:opacity .3s;
+}
+.conn--ok{color:#8fe3a8;} .conn--wait{color:var(--accent);}
+.conn--bad{color:#ff9d92;} .conn--hide{opacity:0;}
+
+/* ---------- Control ---------- */
+#control{
+  display:flex; justify-content:center; align-items:center;
+  padding: 8px calc(var(--safe-right) + 12px)
+           calc(var(--safe-bottom) + 12px) calc(var(--safe-left) + 12px);
+  background:linear-gradient(#12141a,#0e1016);
+  border-top:1px solid var(--line);
+}
+
+/* статус ОТКРЫТО/ЗАКРЫТО — оверлей вверху карты (под шапкой) */
+.status-top{
+  position:absolute; top:8px; left:50%; transform:translateX(-50%); z-index:15;
+  font-weight:800; letter-spacing:.10em; font-size:clamp(16px,5vw,24px);
+  padding:3px 14px; border-radius:999px; background:#0b0d12b0;
+  text-shadow:0 1px 3px #000b; pointer-events:none; white-space:nowrap;
+}
+.state-open  .status-top{color:var(--open);}
+.state-closed .status-top{color:var(--closed);}
+
+/* платные действия — контекстная иконка в НИЖНЕМ углу поверх карты */
+.act-corner{
+  position:absolute; bottom:10px; z-index:20;
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:6px 8px; border:1px solid #ffffff2b; border-radius:12px;
+  background:#12141ac9; backdrop-filter:blur(3px); color:var(--ink);
+  cursor:pointer; width:74px; pointer-events:auto;
+}
+.act-corner:active{transform:scale(.96);}
+.act-hidden{display:none;}
+.act-left{left:calc(var(--safe-left) + 8px);}
+.act-right{right:calc(var(--safe-right) + 8px);}
+.act-icon{width:40px; height:40px; object-fit:contain; pointer-events:none;}
+.act-label{font-size:10px; line-height:1.1; text-align:center; opacity:.92;}
+
+/* разлок (реклама + прогресс) — по ЦЕНТРУ карты, в строке иконок
+   (чуть выше их по высоте); иконки при этом остаются в углах */
+.unlock{
+  position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+  z-index:20; width:170px;
+  display:flex; flex-direction:column; align-items:stretch; gap:6px;
+  padding:8px; border:1px solid #ffffff22; border-radius:12px;
+  background:#12141ad9; backdrop-filter:blur(3px);
+}
+.unlock-hint{font-size:11px; color:var(--muted); text-align:center; line-height:1.15;}
+.unlock-bar{width:100%; height:10px; border-radius:999px; background:#1a1e2a;
+  border:1px solid var(--line); overflow:hidden;}
+.unlock-fill{height:100%; width:0%; border-radius:999px;
+  background:linear-gradient(90deg,#3aa0ff,#37e0a0); transition:width .2s ease;}
+.unlock-count{font-size:12px; color:var(--ink); text-align:center;
+  font-variant-numeric:tabular-nums;}
+.btn-ad{
+  padding:7px 10px; border:none; border-radius:10px; cursor:pointer;
+  font-weight:700; font-size:12px; color:#0a0e14;
+  background:linear-gradient(#ffd76a,#f5b73c);
+}
+.btn-ad:active{transform:translateY(1px);}
+
+/* заблокированный тумблер — серый и неактивный на вид */
+.toggle.locked .toggle-img{filter:grayscale(1) brightness(.7);}
+.toggle.locked{cursor:pointer;}
+.toggle{
+  background:none; border:none; cursor:pointer; padding:0;
+  width:min(82%,400px); display:block;
+}
+.toggle-img{
+  width:100%; height:auto; display:block; object-fit:contain;
+  -webkit-user-drag:none; user-select:none; pointer-events:none;
+}
+.toggle[disabled]{opacity:.9; cursor:default;}
+
+/* ---------- Modal ---------- */
+.modal{
+  position:fixed; inset:0; z-index:50; display:flex;
+  align-items:center; justify-content:center; padding:20px;
+  background:#0009; backdrop-filter:blur(2px);
+}
+.modal.hidden{display:none;}
+.modal-card{position:relative; width:min(92vw,440px);}
+.modal-bg{width:100%; height:100%; position:absolute; inset:0;
+  object-fit:fill; pointer-events:none;}
+.modal-inner{position:relative; padding:26px 24px; max-height:86dvh; overflow-y:auto;}
+.modal-inner h2{margin:2px 0 18px; font-size:20px;}
+.modal-inner label{display:block; margin:14px 0 6px; font-size:13px; color:var(--muted);}
+.field{
+  width:100%; padding:11px 12px; font-size:15px; color:var(--ink);
+  background:#0f1219; border:1px solid var(--line); border-radius:10px; outline:none;
+}
+.field:focus{border-color:var(--accent);}
+
+/* Выбор флага (фракции) — выпадающий список (как был селект стран, но с флагами) */
+.flag-select{position:relative; margin-top:2px;}
+.flag-select-btn{
+  width:100%; display:flex; align-items:center; gap:12px;
+  padding:9px 12px; background:#0f1219; border:1px solid var(--line);
+  border-radius:10px; cursor:pointer; color:var(--ink); font:inherit; font-size:15px;
+}
+.flag-select-btn:focus,.flag-select-btn.open{border-color:var(--accent);}
+.flag-select-btn img{
+  width:48px; height:33px; object-fit:cover; border-radius:4px;
+  box-shadow:0 0 0 1px #000a; pointer-events:none; flex:0 0 auto;
+}
+.flag-select-name{flex:1 1 auto; text-align:left; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.flag-select-caret{pointer-events:none; color:var(--muted); font-size:12px; flex:0 0 auto;}
+.flag-menu{
+  position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:30;
+  max-height:min(320px, 46dvh); overflow-y:auto;
+  background:#161a22; border:1px solid var(--line); border-radius:10px;
+  padding:6px; box-shadow:0 10px 28px #000c;
+}
+.flag-opt{
+  display:flex; align-items:center; gap:12px; width:100%;
+  padding:8px 10px; background:none; border:none; border-radius:8px;
+  cursor:pointer; color:var(--ink); font:inherit; font-size:14px;
+}
+.flag-opt img{
+  width:48px; height:33px; object-fit:cover; border-radius:4px;
+  box-shadow:0 0 0 1px #000a; pointer-events:none; flex:0 0 auto;
+}
+.flag-opt .flag-name{flex:1 1 auto; text-align:left; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.flag-opt:active{background:#ffffff12;}
+.flag-opt.sel{background:#1a1e2a;}
+.flag-opt.sel img{box-shadow:0 0 0 2px var(--accent);}
+.check-row{
+  display:flex !important; align-items:center; gap:10px;
+  margin:16px 0 2px !important; font-size:15px !important; color:var(--ink) !important;
+  cursor:pointer; user-select:none;
+}
+.check-row input{width:18px; height:18px; accent-color:var(--accent); cursor:pointer;}
+.err{color:#ff9d92; font-size:12px; min-height:0; margin:0;}
+.err:not(:empty){margin-top:4px;}
+.modal-actions{display:flex; gap:10px; margin-top:20px;}
+.btn-reset{
+  width:100%; margin-top:14px; background:none; border:1px solid #6a3a3a;
+  color:#ff9d92; padding:9px; border-radius:10px; cursor:pointer; font-size:13px;
+}
+.btn-reset:active{transform:translateY(1px);}
+/* «Как играть» — строка-кнопка в настройках, открывает отдельное окно */
+.help-open{
+  display:block; width:100%; text-align:left;
+  margin-top:16px; padding:12px 0 2px;
+  border:none; border-top:1px solid var(--line);
+  background:none; color:var(--ink); font-weight:700; font-size:15px; cursor:pointer;
+}
+.help-open::before{content:"❔ ";}
+.help-open:active{opacity:.7;}
+.help-line{margin:10px 0 0; font-size:13px; line-height:1.45; color:var(--muted);}
+
+/* Окно «Как играть» поверх настроек; тот же фон-панель, что и у настроек */
+#help-modal{z-index:60;}
+#help-modal .modal-inner{max-height:82dvh; overflow-y:auto;}
+#help-modal h2{margin:2px 0 10px;}
+.btn{
+  flex:1; padding:12px; font-size:15px; font-weight:700; border:none;
+  border-radius:10px; cursor:pointer;
+}
+.btn-primary{background:var(--accent); color:#1a1d22;}
+.btn-ghost{background:#ffffff12; color:var(--ink);}
+.btn:active{transform:translateY(1px);}
+.hidden{display:none !important;}
+
+/* RTL */
+[dir="rtl"] .hdr-text{text-align:right;}
+[dir="rtl"] .modal-inner{direction:rtl;}
+[dir="rtl"] .help-open{text-align:right;}

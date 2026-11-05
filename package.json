@@ -1,0 +1,23 @@
+{
+  "name": "ormuz-strait",
+  "version": "1.0.0",
+  "description": "Кооперативный кликер по ТЗ: один индустриальный тумблер `ОТКРЫТО / ЗАКРЫТО`, баржи перекрывают или освобождают пролив, состояние синхронизируется у всех подключённых игроков в реальном времени (WebSocket) с фоновым REST для первичной загрузки.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capgo/native-purchases": "^8.6.5"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
+}

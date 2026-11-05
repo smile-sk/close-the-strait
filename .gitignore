@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+node_modules/
+android/
+.gradle/
+*.aab
+*.apk
+*.keystore
+server/state.json.tmp
+server/push_tokens.json

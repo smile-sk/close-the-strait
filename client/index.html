@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#12141a" />
+  <title>Strait Control</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="state-closed">
+  <!-- Заставка-логотип (показывается Xс при запуске, затем плавно исчезает).
+       Работает и в приложении, и в браузере. Длительность — в скрипте ниже. -->
+  <div id="splash" style="position:fixed;inset:0;z-index:9999;background:#070707
+       center/contain no-repeat;background-image:url('assets/splash_logo.png');
+       transition:opacity .6s ease;">
+  </div>
+  <script>
+    (function () {
+      var sp = document.getElementById("splash");
+      var HOLD = 1500;                         // сколько держать логотип (мс)
+      function hide() {
+        sp.style.opacity = "0";
+        setTimeout(function () { sp.style.display = "none"; }, 650);
+      }
+      window.addEventListener("load", function () { setTimeout(hide, HOLD); });
+      setTimeout(hide, HOLD + 4000);           // страховка, если load не сработал
+    })();
+  </script>
+
+  <!-- Блокировка ориентации: только портрет (в приложении/PWA и в WebView).
+       В обычной вкладке браузера lock() отклонится — там портрет держит CSS-рамка
+       (#app), привязанная к пропорции карты пролива. -->
+  <script>
+    (function () {
+      function lockPortrait() {
+        try {
+          var o = screen.orientation;
+          if (o && o.lock) { var p = o.lock("portrait"); if (p && p.catch) p.catch(function(){}); }
+        } catch (e) {}
+      }
+      lockPortrait();
+      window.addEventListener("orientationchange", lockPortrait);
+      document.addEventListener("fullscreenchange", lockPortrait);
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) lockPortrait();
+      });
+    })();
+  </script>
+
+  <!-- Игровая рамка. В браузере ограничена по пропорции карты пролива (9:16):
+       высота = высоте окна, ширина считается от неё → графика не расплывается
+       и не ломается в широком/ландшафтном окне. -->
+  <div id="app">
+
+  <!-- Шапка (safe-area aware) -->
+  <header id="header">
+    <img id="hdr-flag" class="hdr-flag" alt="" />
+    <div id="hdr-text" class="hdr-text">…</div>
+    <button id="btn-settings" class="btn-icon" aria-label="settings">
+      <img src="assets/icon_settings.png" alt="settings" />
+    </button>
+  </header>
+
+  <!-- Интерактивная карта -->
+  <main id="stage">
+    <canvas id="map"></canvas>
+    <div id="conn" class="conn conn--wait">…</div>
+
+    <!-- статус ОТКРЫТО/ЗАКРЫТО — оверлей вверху, под шапкой -->
+    <div id="status-top" class="status-top"></div>
+
+    <!-- платные действия: одна контекстная иконка в нижнем углу -->
+    <button id="act-sink" type="button" class="act-corner act-left act-hidden" data-kind="sink">
+      <img class="act-icon" src="assets/icon_sink.png" alt="" />
+      <span class="act-label" id="act-sink-label"></span>
+    </button>
+    <button id="act-fleet" type="button" class="act-corner act-right act-hidden" data-kind="fleet">
+      <img class="act-icon" src="assets/icon_fleet.png" alt="" />
+      <span class="act-label" id="act-fleet-label"></span>
+    </button>
+
+    <!-- разлок (реклама + прогресс) — появляется над активной иконкой, слева или справа -->
+    <div id="unlock" class="unlock hidden">
+      <div id="unlock-hint" class="unlock-hint"></div>
+      <button id="watch-ad" class="btn-ad hidden"></button>
+      <div class="unlock-bar"><div id="unlock-fill" class="unlock-fill"></div></div>
+      <div id="unlock-count" class="unlock-count"></div>
+    </div>
+  </main>
+
+  <!-- Панель управления: ТОЛЬКО тумблер (зона фиксированного размера) -->
+  <footer id="control">
+    <button id="toggle" class="toggle" aria-label="toggle strait">
+      <img id="toggle-img" src="assets/switch_toggle_close.png" class="toggle-img" alt="" />
+    </button>
+  </footer>
+
+  </div><!-- /#app -->
+
+  <!-- Модальное окно (онбординг / настройки) -->
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <img src="assets/ui_panel_bg.png" class="modal-bg" alt="" />
+      <div class="modal-inner">
+        <h2 id="modal-title"></h2>
+
+        <label id="lbl-lang" for="f-lang"></label>
+        <select id="f-lang" class="field"></select>
+
+        <label id="lbl-name" for="f-name"></label>
+        <input id="f-name" class="field" type="text" maxlength="16" />
+        <div id="name-err" class="err"></div>
+
+        <label id="lbl-flag"></label>
+        <div id="f-flag" class="flag-select"></div>
+
+        <label class="check-row">
+          <input id="f-music" type="checkbox" />
+          <span id="lbl-music"></span>
+        </label>
+
+        <label class="check-row">
+          <input id="f-sound" type="checkbox" />
+          <span id="lbl-sound"></span>
+        </label>
+
+        <!-- Уведомления временно скрыты (может вернём позже)
+        <label class="check-row">
+          <input id="f-push" type="checkbox" />
+          <span id="lbl-push"></span>
+        </label>
+        -->
+
+        <button id="help-open" type="button" class="help-open hidden"></button>
+
+        <button id="btn-reset" class="btn btn-reset hidden"></button>
+
+        <div class="modal-actions">
+          <button id="btn-cancel" class="btn btn-ghost hidden"></button>
+          <button id="btn-save" class="btn btn-primary"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Отдельное окно «Как играть» (тот же фон-панель, кнопка ОК) -->
+  <div id="help-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <img src="assets/ui_panel_bg.png" class="modal-bg" alt="" />
+      <div class="modal-inner">
+        <h2 id="help-modal-title"></h2>
+        <p id="help-toggle" class="help-line"></p>
+        <p id="help-actions" class="help-line"></p>
+        <p id="help-lock" class="help-line"></p>
+        <div class="modal-actions">
+          <button id="help-ok" class="btn btn-primary"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/billing.js"></script>
+  <script src="js/ads.js"></script>
+  <script src="js/push.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
